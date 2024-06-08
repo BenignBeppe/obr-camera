@@ -1,6 +1,13 @@
 {
     "name": "Camera",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "manifest_version": 1,
-    "background_url": "/"
+    "background_url": "/",
+    "action": {
+        "title": "Camera",
+        "icon": "/icon.svg",
+        "popover": "/",
+        "height": 400,
+        "width": 350
+      }
 }

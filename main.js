@@ -20,16 +20,22 @@ async function init() {
     log("Starting");
 
     let sceneMetadata = await OBR.scene.getMetadata();
-    sceneId = sceneMetadata[getPluginId("sceneId")];
-    if(!sceneId) {
-        log("No id for scene, adding one.");
+    if(!sceneMetadata[getPluginId("sceneId")]) {
+        log("Adding scene info.");
         await OBR.scene.setMetadata({
-            [getPluginId("sceneId")]: crypto.randomUUID()
+            [getPluginId("sceneId")]: crypto.randomUUID(),
+            [getPluginId("locations")]: []
         });
     }
-    log(`Scene id: "${sceneId}".`);
+    log(`Adding scene id: "${sceneId}".`);
+    sceneId = sceneMetadata[getPluginId("sceneId")];
     loadCamera();
     setInterval(saveCamera, cameraSaveInterval);
+    OBR.scene.onMetadataChange(() => {
+        updateLocationList();
+    });
+    document.querySelector("#add-location").addEventListener("click", addLocation);
+    updateLocationList();
 }
 
 async function loadCamera() {
@@ -38,13 +44,17 @@ async function loadCamera() {
         return;
     }
 
-    let focus = camera.position;
+    goToLocation(camera);
+}
+
+async function goToLocation(location) {
+    log("Moving to location:", location);
+    let focus = structuredClone(location.position);
     // Offset camera to load the centre point rather than top left.
     focus.x += await OBR.viewport.getWidth() / 2;
     focus.y += await OBR.viewport.getHeight() / 2;
-    log("Loading camera.");
     OBR.viewport.setPosition(focus);
-    OBR.viewport.setScale(camera.scale);
+    OBR.viewport.setScale(location.scale);
 }
 
 function getSceneCamera() {
@@ -61,18 +71,141 @@ function getSceneCamera() {
 }
 
 async function saveCamera() {
+    log("Saving camera.");
+    let location = await makeLocation();
+    let cameras = JSON.parse(localStorage.getItem(getPluginId())) || {};
+    cameras[sceneId] = location;
+    localStorage.setItem(getPluginId(), JSON.stringify(cameras));
+}
+
+async function makeLocation() {
     let focus = await OBR.viewport.getPosition();
     // Offset camera to save the centre point rather than top left.
     focus.x -= await OBR.viewport.getWidth() / 2;
     focus.y -= await OBR.viewport.getHeight() / 2;
-    let cameras = JSON.parse(localStorage.getItem(getPluginId())) || {};
-    let camera = {
+    let location = {
         position: focus,
         scale: await OBR.viewport.getScale()
     };
-    cameras[sceneId] = camera;
-    log(`Saving camera.`);
-    localStorage.setItem(getPluginId(), JSON.stringify(cameras));
+
+    return location;
+}
+
+async function addLocation() {
+    let name = prompt("Enter location name.");
+    if(!name) {
+        return;
+    }
+
+    let metadata = await OBR.scene.getMetadata();
+    let locations = metadata[getPluginId("locations")];
+    let matchingNameLocation = locations.find(t => t.name === name);
+    if(matchingNameLocation) {
+        alert(
+            "A location with that name is already in the list. New location" +
+            " will not be added."
+        );
+        return;
+    }
+
+    let location = await makeLocation();
+    location["name"] = name;
+    log("Adding location:" + location);
+    locations.push(location);
+    await OBR.scene.setMetadata({
+        [getPluginId("locations")]: locations
+    });
+}
+
+async function updateLocationList() {
+    let metadata = await OBR.scene.getMetadata();
+    let locations = metadata[getPluginId("locations")];
+    let locationElements = [];
+    for(let [index, location] of locations.entries()) {
+        let template = document.querySelector("#templates .location");
+        let locationElement = template.cloneNode(true);
+        locationElement.querySelector(".go-to").addEventListener(
+            "click",
+            () => {goToLocation(location)}
+        );
+        let nameElement = locationElement.querySelector(".name");
+        nameElement.textContent = location.name;
+        locationElement.querySelector(".edit").addEventListener(
+            "click",
+            () => {editName(index, location.name)}
+        );
+        locationElement.querySelector(".save").addEventListener(
+            "click",
+            () => {saveLocation(location)}
+        );
+        locationElement.querySelector(".remove").addEventListener(
+            "click",
+            () => {removeLocation(index, location)}
+        );
+        locationElements.push(locationElement);
+    }
+    let locationList = document.querySelector("#locations");
+    locationList.replaceChildren(...locationElements);
+}
+
+async function editName(index, oldName) {
+    let name = prompt("Enter new location name.", oldName);
+    if(!name) {
+        return;
+    }
+    
+    let metadata = await OBR.scene.getMetadata();
+    let locations = metadata[getPluginId("locations")];
+    let matchingNameLocation = locations.find(t => t.name === name);
+    if(matchingNameLocation) {
+        alert(
+            "A location with that name is already in the list." + 
+            " Name will not be changed."
+        );
+        return;
+    }
+
+    locations[index].name = name;
+    await OBR.scene.setMetadata({
+        [getPluginId("locations")]: locations
+    });
+}
+
+async function saveLocation(location) {
+    let confirmed = confirm(
+        "Are you sure you want to overwrite location" +
+        ` "${location.name}"?`
+    );
+    if(!confirmed) {
+        return;
+    }
+
+    let newLocation = await makeLocation();
+    Object.assign(location, newLocation);
+    let metadata = await OBR.scene.getMetadata();
+    let locations = metadata[getPluginId("locations")];            
+    locations[index] = location;
+    await OBR.scene.setMetadata({
+        [getPluginId("locations")]: locations
+    });
+}
+
+async function removeLocation(index, location) {
+    let confirmed = confirm(
+        "Are you sure you want to remove location" +
+        ` "${location.name}" from the list?`
+    );
+    if(!confirmed) {
+        return;
+    }
+
+    log(`Removing location "${location.name}".`);            
+    let metadata = await OBR.scene.getMetadata();
+    let locations = metadata[getPluginId("locations")];            
+    locations.splice(index, 1);
+    await OBR.scene.setMetadata({
+        [getPluginId("locations")]: locations
+    });
 }
 
 OBR.onReady(async () => {
