@@ -21,14 +21,16 @@ async function init() {
 
     let sceneMetadata = await OBR.scene.getMetadata();
     if(!sceneMetadata[getPluginId("sceneId")]) {
-        log("Adding scene info.");
         await OBR.scene.setMetadata({
-            [getPluginId("sceneId")]: crypto.randomUUID(),
+            [getPluginId("sceneId")]: crypto.randomUUID()
+        });
+    }
+    if(!sceneMetadata[getPluginId("locations")]) {
+        await OBR.scene.setMetadata({
             [getPluginId("locations")]: []
         });
     }
     sceneId = sceneMetadata[getPluginId("sceneId")];
-    log(`Adding scene id: "${sceneId}".`);
     loadCamera();
     setInterval(saveCamera, cameraSaveInterval);
     OBR.scene.onMetadataChange(() => {
