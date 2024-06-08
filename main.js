@@ -27,8 +27,8 @@ async function init() {
             [getPluginId("locations")]: []
         });
     }
-    log(`Adding scene id: "${sceneId}".`);
     sceneId = sceneMetadata[getPluginId("sceneId")];
+    log(`Adding scene id: "${sceneId}".`);
     loadCamera();
     setInterval(saveCamera, cameraSaveInterval);
     OBR.scene.onMetadataChange(() => {
