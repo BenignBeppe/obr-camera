@@ -112,7 +112,7 @@ async function addLocation() {
 
     let location = await makeLocation();
     location["name"] = name;
-    log("Adding location:" + location);
+    log("Adding location:", location);
     locations.push(location);
     await OBR.scene.setMetadata({
         [getPluginId("locations")]: locations
@@ -138,7 +138,7 @@ async function updateLocationList() {
         );
         locationElement.querySelector(".save").addEventListener(
             "click",
-            () => {saveLocation(location)}
+            () => {saveLocation(index, location)}
         );
         locationElement.querySelector(".remove").addEventListener(
             "click",
@@ -173,7 +173,7 @@ async function editName(index, oldName) {
     });
 }
 
-async function saveLocation(location) {
+async function saveLocation(index, location) {
     let confirmed = confirm(
         "Are you sure you want to overwrite location" +
         ` "${location.name}"?`
