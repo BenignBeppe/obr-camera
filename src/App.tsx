@@ -67,14 +67,14 @@ function LocationItem(
         <LocationOnRounded />
     </IconButton>;
 
-    let buttons = <>
+    let buttons = [
         <IconButton onClick={() => editName(location)}>
             <EditRounded />
-        </IconButton>
+        </IconButton>,
         <IconButton onClick={() => saveLocation(location)}>
             <SaveRounded />
         </IconButton>
-    </>;
+    ];
 
     return <PluginListItem
         item={location}
