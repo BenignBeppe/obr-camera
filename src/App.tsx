@@ -27,7 +27,14 @@ interface NamedLocation extends Location {
 }
 
 export function App() {
-    OBR.scene.isReady().then(init);
+    useEffect(() =>
+        OBR.scene.onReadyChange((ready) => {
+            if(ready) {
+                init();
+            }
+        }),
+        []
+    );
 
     return <Stack>
         <Stack direction="row" sx={{ alignItems: "center" }}>
@@ -44,7 +51,6 @@ function LocationList() {
     let [locations, setLocations] = useState<NamedLocation[]>([]);
     useEffect(() => {
         function onChange(metadata: Metadata) {
-            console.log(metadata);
             let locations = metadata[getPluginId("locations")] as [];
             setLocations(locations);
         };
@@ -102,17 +108,22 @@ function log(...message: unknown[]) {
 
 async function init() {
     let sceneMetadata = await OBR.scene.getMetadata();
-    if(!sceneMetadata[getPluginId("sceneId")]) {
+    if(sceneMetadata[getPluginId("sceneId")]) {
+        sceneId = sceneMetadata[getPluginId("sceneId")] as string;
+    } else {
+        sceneId = crypto.randomUUID();
+        log(`Generating new scene ID: "${sceneId}".`);
         await OBR.scene.setMetadata({
             [getPluginId("sceneId")]: crypto.randomUUID()
         });
     }
+    log(`Scene ID: "${sceneId}".`);
     if(!sceneMetadata[getPluginId("locations")]) {
+        log("Adding empty locations.");
         await OBR.scene.setMetadata({
             [getPluginId("locations")]: []
         });
     }
-    sceneId = sceneMetadata[getPluginId("sceneId")] as string;
     loadCamera();
     setInterval(saveCamera, cameraSaveInterval);
 }
@@ -127,7 +138,12 @@ async function loadCamera() {
 }
 
 function getSceneCamera(): Location | null {
-    let cameras = JSON.parse(localStorage.getItem(getPluginId()) || "");
+    let jsonString = localStorage.getItem(getPluginId());
+    if(!jsonString) {
+        return null;
+    }
+
+    let cameras = JSON.parse(jsonString);
     if(!cameras) {
         return null;
     }
@@ -142,21 +158,27 @@ function getSceneCamera(): Location | null {
 async function saveCamera() {
     log("Saving camera.");
     let location = await makeLocation();
-    let cameras = JSON.parse(localStorage.getItem(getPluginId()) || "") || {};
+    let jsonString = localStorage.getItem(getPluginId());
+    let cameras;
+    if(jsonString) {
+        cameras = JSON.parse(jsonString);
+    } else {
+        cameras = {};
+    }
     cameras[sceneId] = location;
     localStorage.setItem(getPluginId(), JSON.stringify(cameras));
 }
 
 async function addLocation() {
     let name = prompt("Enter location name.");
-    if (!name) {
+    if(!name) {
         return;
     }
 
     let metadata = await OBR.scene.getMetadata();
     let locations = metadata[getPluginId("locations")] as NamedLocation[];
     let matchingNameLocation = locations.find(t => t.name === name);
-    if (matchingNameLocation) {
+    if(matchingNameLocation) {
         alert(
             "A location with that name is already in the list. New location" +
             " will not be added."
