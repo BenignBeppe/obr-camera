@@ -4,47 +4,9 @@
         <title>Camera</title>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <script type="module" src="./main.js"></script>
-        <link rel="stylesheet" href="./style.css">
     </head>
     <body>
-        <header>
-            <button id="add-location" title="Add location">
-                <div class="icon" style="mask-image: url(/images/add.svg)"></div>
-            </button>
-        </header>
-        <ol id="locations"></ol>
-        <section id="instructions">
-            <p>
-                Click on <span class="icon" style="mask-image: url(/images/add.svg)"></span> above to add a location.
-            </p>
-        </section>
-
-        <div id="templates" hidden>
-            <li class="location">
-                <div>
-                    <button class="go-to" title="Go to location">
-                        <div class="icon" style="mask-image: url(/images/go-to.svg)"></div>
-                    </button>
-                    <span class="name"></span>
-                    <details>
-                        <summary class="show-more" title="Show more">
-                            <div class="icon" style="mask-image: url(/images/more.svg)"></div>
-                        </summary>
-                    </details>
-                </div>
-                <section class="options">
-                    <button class="edit" title="Edit name">
-                        <div class="icon" style="mask-image: url(/images/edit.svg)"></div>
-                    </button>
-                    <button class="save" title="Save location">
-                        <div class="icon" style="mask-image: url(/images/save.svg)"></div>
-                    </button>
-                    <button class="remove danger" title="Remove location">
-                        <div class="icon" style="mask-image: url(/images/remove.svg)"></div>
-                    </button>
-                </section>
-            </li>
-        </div>
+        <div id="root"></div>
+        <script type="module" src="/src/main.tsx"></script>
     </body>
 </html>

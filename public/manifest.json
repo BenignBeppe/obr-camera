@@ -1,13 +1,12 @@
 {
     "name": "Camera",
-    "version": "0.2.3",
+    "version": "0.3.0-alpha",
     "manifest_version": 1,
-    "background_url": "/",
     "action": {
         "title": "Camera",
-        "icon": "/icon.svg",
-        "popover": "/",
+        "icon": "/obr-camera/icon.svg",
+        "popover": "/obr-camera/",
         "height": 400,
         "width": 350
-      }
+    }
 }
