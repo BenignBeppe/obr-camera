@@ -299,6 +299,7 @@ async function saveLocation(location: NamedLocation) {
     }
 
     let newLocation = await makeLocation() as NamedLocation;
+    newLocation.name = location.name;
     let metadata = await OBR.scene.getMetadata();
     let locations = metadata[getPluginId("locations")] as NamedLocation[];
     let index = locations.findIndex((l) => l.name === location.name);
