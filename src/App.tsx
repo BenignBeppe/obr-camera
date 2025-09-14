@@ -2,16 +2,22 @@ import AddRounded from "@mui/icons-material/AddRounded";
 import EditRounded from "@mui/icons-material/EditRounded";
 import LocationOnRounded from "@mui/icons-material/LocationOnRounded";
 import SaveRounded from "@mui/icons-material/SaveRounded";
+import SettingsRounded from "@mui/icons-material/SettingsRounded";
+import Checkbox from "@mui/material/Checkbox";
+import Collapse from "@mui/material/Collapse";
 import Divider from "@mui/material/Divider";
+import FormControlLabel from "@mui/material/FormControlLabel";
 import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
 import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import OBR, { type Metadata } from "@owlbear-rodeo/sdk";
 import { useEffect, useState } from "react";
 import { PluginListItem } from "../lib/obr-plugin/PluginListItem.tsx";
 
-// One minute between saves.
-let cameraSaveInterval = 1000 * 60;
+// Ten seconds between saves.
+let saveCameraInterval = 1000 * 10;
+let saveCameraIntervalId: number;
 let sceneId: string;
 
 interface Location {
@@ -20,7 +26,7 @@ interface Location {
         y: number
     };
     scale: number;
-};
+}
 
 interface NamedLocation extends Location {
     name: string;
@@ -35,15 +41,50 @@ export function App() {
         }),
         []
     );
+    let [settingsOpen, setSettingsOpen] = useState(false);
+    function toggleSettingsOpen() {
+        setSettingsOpen(!settingsOpen);
+    };
 
     return <Stack>
         <Stack direction="row" sx={{ alignItems: "center" }}>
             <IconButton onClick={addLocation}>
                 <AddRounded />
             </IconButton>
+            <IconButton title="Settings" onClick={toggleSettingsOpen}>
+                <SettingsRounded {...settingsOpen && {color: "primary"}}/>
+            </IconButton>
         </Stack>
+        <Collapse in={settingsOpen} sx={{paddingInline: 2}}>
+            <RememberPositionToggle />
+        </Collapse>
         <Divider variant="middle" />
         <LocationList />
+    </Stack>;
+}
+
+function RememberPositionToggle() {
+    let initialState = getSetting("rememberPosition", true);
+    let [rememberPosition, setRememberPosition] = useState(initialState);
+
+    function toggleSaveLocation() {
+        let newState = !rememberPosition;
+        if(newState) {
+            saveCameraIntervalId = setInterval(saveCamera, saveCameraInterval);
+        } else {
+            clearInterval(saveCameraIntervalId);
+        }
+        setRememberPosition(newState);
+        setSetting("rememberPosition", newState);
+    }
+
+    return <Stack direction="row">
+        <FormControlLabel
+            control={
+                <Checkbox onChange={toggleSaveLocation} checked={rememberPosition} disableRipple />
+            }
+            label={<Typography color="textPrimary">Remember camera position</Typography>}
+        />
     </Stack>;
 }
 
@@ -106,6 +147,10 @@ function log(...message: unknown[]) {
     console.log(`${getPluginId()}:`, ...message);
 }
 
+function debug(...message: unknown[]) {
+    console.debug(`${getPluginId()}:`, ...message);
+}
+
 async function init() {
     let sceneMetadata = await OBR.scene.getMetadata();
     if(sceneMetadata[getPluginId("sceneId")]) {
@@ -124,8 +169,10 @@ async function init() {
             [getPluginId("locations")]: []
         });
     }
-    loadCamera();
-    setInterval(saveCamera, cameraSaveInterval);
+    if(getSetting("rememberPosition", true)) {
+        loadCamera();
+    }
+    saveCameraIntervalId = setInterval(saveCamera, saveCameraInterval);
 }
 
 async function loadCamera() {
@@ -138,12 +185,7 @@ async function loadCamera() {
 }
 
 function getSceneCamera(): Location | null {
-    let jsonString = localStorage.getItem(getPluginId());
-    if(!jsonString) {
-        return null;
-    }
-
-    let cameras = JSON.parse(jsonString);
+    let cameras = getSetting("sceneCameras");
     if(!cameras) {
         return null;
     }
@@ -158,15 +200,9 @@ function getSceneCamera(): Location | null {
 async function saveCamera() {
     log("Saving camera.");
     let location = await makeLocation();
-    let jsonString = localStorage.getItem(getPluginId());
-    let cameras;
-    if(jsonString) {
-        cameras = JSON.parse(jsonString);
-    } else {
-        cameras = {};
-    }
+    let cameras = getSetting("sceneCameras", {});
     cameras[sceneId] = location;
-    localStorage.setItem(getPluginId(), JSON.stringify(cameras));
+    setSetting("sceneCameras", cameras);
 }
 
 async function addLocation() {
@@ -311,4 +347,34 @@ async function saveLocation(location: NamedLocation) {
     await OBR.scene.setMetadata({
         [getPluginId("locations")]: locations
     });
+}
+
+function getSetting(name: string, defaultValue?: unknown) {
+    defaultValue ??= null;
+    let jsonString = localStorage.getItem(getPluginId(name));
+    if(!jsonString) {
+        return defaultValue;
+    }
+
+    let value;
+    try {
+        value = JSON.parse(jsonString);
+    } catch {
+        return defaultValue;
+    }
+
+    return value;
+}
+
+function setSetting(name: string, value: unknown) {
+    let valueString;
+    try {
+        valueString = JSON.stringify(value);
+    } catch {
+        log("Couldn't stringify setting value:", value);
+        return;
+    }
+
+    debug(`Saving setting "${name}" = ${valueString}`);
+    localStorage.setItem(getPluginId(name), valueString);
 }
