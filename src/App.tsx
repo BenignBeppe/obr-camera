@@ -48,7 +48,7 @@ export function App() {
 
     return <Stack>
         <Stack direction="row" sx={{ alignItems: "center" }}>
-            <IconButton onClick={addLocation}>
+            <IconButton title="Add location" onClick={addLocation}>
                 <AddRounded />
             </IconButton>
             <IconButton title="Settings" onClick={toggleSettingsOpen}>
@@ -110,15 +110,18 @@ function LocationItem(
     { location, locations, index }:
     { location: NamedLocation, locations: NamedLocation[], index: number }
 ) {
-    let goToButton = <IconButton onClick={() => goToLocation(location)}>
+    let goToButton = <IconButton
+        title="Go to location"
+        onClick={() => goToLocation(location)}
+    >
         <LocationOnRounded />
     </IconButton>;
 
     let buttons = [
-        <IconButton onClick={() => editName(location)}>
+        <IconButton title="Edit name" onClick={() => editName(location)}>
             <EditRounded />
         </IconButton>,
-        <IconButton onClick={() => saveLocation(location)}>
+        <IconButton title="Save location" onClick={() => saveLocation(location)}>
             <SaveRounded />
         </IconButton>
     ];
