@@ -11,8 +11,8 @@ import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import OBR, { type Metadata } from "@owlbear-rodeo/sdk";
-import { useEffect, useState } from "react";
+import OBR, { type Metadata, type ViewportTransform } from "@owlbear-rodeo/sdk";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { PluginListItem } from "../lib/obr-plugin/PluginListItem.tsx";
 
 // Ten seconds between saves.
@@ -55,8 +55,11 @@ export function App() {
                 <SettingsRounded {...settingsOpen && {color: "primary"}}/>
             </IconButton>
         </Stack>
-        <Collapse in={settingsOpen} sx={{paddingInline: 2}}>
-            <RememberPositionToggle />
+        <Collapse in={settingsOpen}>
+            <Stack paddingInline={2}>
+                <RememberPositionToggle />
+                <AnimateMovementToggle />
+            </Stack>
         </Collapse>
         <Divider variant="middle" />
         <LocationList />
@@ -64,28 +67,48 @@ export function App() {
 }
 
 function RememberPositionToggle() {
-    let initialState = getSetting("rememberPosition", true);
-    let [rememberPosition, setRememberPosition] = useState(initialState);
+    let initialValue = getSetting("rememberPosition", true);
+    let [checked, setChecked] = useState(initialValue);
 
-    function toggleSaveLocation() {
-        let newState = !rememberPosition;
-        if(newState) {
+    function changeValue(event: ChangeEvent<HTMLInputElement>) {
+        if(event.target.checked) {
             saveCameraIntervalId = setInterval(saveCamera, saveCameraInterval);
         } else {
             clearInterval(saveCameraIntervalId);
         }
-        setRememberPosition(newState);
-        setSetting("rememberPosition", newState);
+        setChecked(event.target.checked);
+        setSetting("rememberPosition", event.target.checked);
     }
 
-    return <Stack direction="row">
-        <FormControlLabel
-            control={
-                <Checkbox onChange={toggleSaveLocation} checked={rememberPosition} disableRipple />
-            }
-            label={<Typography color="textPrimary">Remember camera position</Typography>}
-        />
-    </Stack>;
+    let checkbox = <Checkbox
+        onChange={changeValue}
+        checked={checked}
+        disableRipple
+    />;
+    let label = <Typography color="textPrimary">
+        Remember camera position
+    </Typography>;
+    return <FormControlLabel control={ checkbox } label={ label } />;
+}
+
+function AnimateMovementToggle() {
+    let initialValue = getSetting("animateMovement", false);
+    let [checked, setChecked] = useState(initialValue);
+
+    function changeValue(event: ChangeEvent<HTMLInputElement>) {
+        setChecked(event.target.checked);
+        setSetting("animateMovement", event.target.checked);
+    }
+
+    let checkbox = <Checkbox
+        onChange={changeValue}
+        checked={checked}
+        disableRipple
+    />;
+    let label = <Typography color="textPrimary">
+        Animate camera movement
+    </Typography>;
+    return <FormControlLabel control={ checkbox } label={ label } />;
 }
 
 function LocationList() {
@@ -165,17 +188,17 @@ async function init() {
             [getPluginId("sceneId")]: crypto.randomUUID()
         });
     }
-    log(`Scene ID: "${sceneId}".`);
+    debug(`Scene ID: "${sceneId}".`);
     if(!sceneMetadata[getPluginId("locations")]) {
-        log("Adding empty locations.");
+        debug("Adding empty locations.");
         await OBR.scene.setMetadata({
             [getPluginId("locations")]: []
         });
     }
     if(getSetting("rememberPosition", true)) {
         loadCamera();
+        saveCameraIntervalId = setInterval(saveCamera, saveCameraInterval);
     }
-    saveCameraIntervalId = setInterval(saveCamera, saveCameraInterval);
 }
 
 async function loadCamera() {
@@ -253,8 +276,16 @@ async function goToLocation(location: Location) {
     // Offset camera to load the centre point rather than top left.
     focus.x += await OBR.viewport.getWidth() / 2;
     focus.y += await OBR.viewport.getHeight() / 2;
-    OBR.viewport.setPosition(focus);
-    OBR.viewport.setScale(location.scale);
+    let transform: ViewportTransform = {
+        position: focus,
+        scale: location.scale
+    };
+    if(getSetting("animateMovement")) {
+        OBR.viewport.animateTo(transform);
+    } else {
+        OBR.viewport.setPosition(focus);
+        OBR.viewport.setScale(location.scale);
+    }
 }
 
 async function moveLocationItem(location: NamedLocation, shift: number) {
@@ -374,7 +405,7 @@ function setSetting(name: string, value: unknown) {
     try {
         valueString = JSON.stringify(value);
     } catch {
-        log("Couldn't stringify setting value:", value);
+        debug("Couldn't stringify setting value:", value);
         return;
     }
 
